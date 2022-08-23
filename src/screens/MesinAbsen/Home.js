@@ -1,34 +1,72 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, {useCallback} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {StatusBar, StyleSheet, Text, Image, View} from 'react-native';
 import {RectButton} from 'react-native-gesture-handler';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useDispatch} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
+import LoadingModal from '../../components/LoadingModal';
 
-import {windowWidth, windowHeight} from '../utils';
+import {windowWidth, windowHeight} from '../../utils';
 
-import {deleteAccessCode} from '../store/reducer/auth';
+import {
+  logoutMesinAbsen,
+  clearFailedAbsenFromDb,
+  clearStatusFailedAbsen,
+  scanRFID,
+} from '../../store/reducer/auth';
 
 export default function Home({navigation}) {
   const dispatch = useDispatch();
 
   const logout = useCallback(() => {
-    dispatch(deleteAccessCode());
+    dispatch(logoutMesinAbsen());
   }, []);
+  const [loading, setLoading] = useState(false);
 
   const pilihAbsen = useCallback(value => {
     navigation.navigate('RFID', {jenis_absen: value});
   }, []);
 
+  const {dataAbsenGagal} = useSelector(state => state.auth);
+
+  const sentAbsenFailed = useCallback(async () => {
+    try {
+      dataAbsenGagal.forEach(item => {
+        dispatch(scanRFID(item));
+      });
+    } catch (e) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+      }, 2000);
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [dataAbsenGagal]);
+
+  useEffect(() => {
+    setLoading(true);
+    sentAbsenFailed();
+    dispatch(clearFailedAbsenFromDb());
+    dispatch(clearStatusFailedAbsen());
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar animated={true} translucent backgroundColor="transparent" />
+      <LoadingModal open={loading} close={() => null} />
       <RectButton onPress={logout} style={styles.logoutButton}>
         <Text style={styles.logoutTitle}>Logout</Text>
         <View style={styles.iconLogout}>
           <Image
             style={styles.image}
-            source={require('../assets/logout.png')}
+            source={require('../../assets/logout.png')}
           />
         </View>
       </RectButton>
@@ -85,7 +123,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
     position: 'absolute',
-    top: windowHeight * 0.07,
+    top: windowHeight * 0.05,
     right: windowHeight * 0.02,
     padding: '2%',
   },

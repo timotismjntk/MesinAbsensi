@@ -1,7 +1,7 @@
 import {configureStore} from '@reduxjs/toolkit';
 import {persistReducer, persistStore} from 'redux-persist';
-import logger from 'redux-logger';
-
+// import logger from 'redux-logger';
+import hardSet from 'redux-persist/lib/stateReconciler/hardSet';
 import combineReducers from './reducer';
 
 // mmkv storages
@@ -25,7 +25,8 @@ const reduxStorage = {
 const persistConfig = {
   key: 'root',
   storage: reduxStorage,
-  whitelist: ['auth'],
+  version: 0,
+  stateReconciler: hardSet,
 };
 
 const persistedReducer = persistReducer(persistConfig, combineReducers);
@@ -35,7 +36,11 @@ export const store = configureStore({
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }).concat(logger),
+    }),
+  // middleware: getDefaultMiddleware =>
+  //   getDefaultMiddleware({
+  //     serializableCheck: false,
+  //   }).concat(logger),
 });
 
 export const persistor = persistStore(store);

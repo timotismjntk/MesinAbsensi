@@ -1,29 +1,69 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, {useState, useCallback} from 'react';
-import {StatusBar, StyleSheet, Text, TextInput, View} from 'react-native';
+import React, {useState, useCallback, useEffect} from 'react';
+import {
+  StatusBar,
+  StyleSheet,
+  Text,
+  Alert,
+  TextInput,
+  View,
+} from 'react-native';
 import {RectButton} from 'react-native-gesture-handler';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useDispatch} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
+import LoadingModal from '../../components/LoadingModal';
+import SuccessModal from '../../components/SuccessModal';
 
-import {windowWidth} from '../utils';
+import {windowWidth} from '../../utils';
 
-import {setAccessCode} from '../store/reducer/auth';
+import {
+  loginMesinAbsen,
+  clearStateMesinAbsen,
+  showModalSuccess,
+} from '../../store/reducer/auth';
 
 export default function Login() {
   const dispatch = useDispatch();
   const [accessCode, setAccesCode] = useState('');
 
   const login = useCallback(() => {
-    if (accessCode === '1234567890') {
-      dispatch(setAccessCode(accessCode));
-    } else {
-      console.log('Kode akses salah');
-    }
+    dispatch(loginMesinAbsen(accessCode));
   }, [accessCode]);
+
+  const {mesinAbsen, isLoadingMesinAbsen, isLoginMesinModalSuccessOpen} =
+    useSelector(state => state.auth);
+
+  useEffect(() => {
+    if (mesinAbsen?.status === 'gagal') {
+      Alert.alert('Gagal', mesinAbsen.pesan || '', [
+        {text: 'OK', onPress: () => dispatch(clearStateMesinAbsen())},
+      ]);
+    } else if (mesinAbsen?.status === 'berhasil') {
+      dispatch(showModalSuccess({from: 'mesin', value: true}));
+    }
+  }, [mesinAbsen]);
+
+  useEffect(() => {
+    if (mesinAbsen?.status === 'berhasil' && isLoginMesinModalSuccessOpen) {
+      setTimeout(() => {
+        dispatch(showModalSuccess({from: 'mesin', value: false}));
+      }, 3000);
+    }
+  }, [mesinAbsen, isLoginMesinModalSuccessOpen]);
+
+  console.log(isLoadingMesinAbsen);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar animated={true} translucent backgroundColor="transparent" />
+      <LoadingModal
+        open={isLoadingMesinAbsen || false}
+        close={() => dispatch(clearStateMesinAbsen())}
+      />
+      <SuccessModal
+        open={mesinAbsen?.status === 'berhasil' && isLoginMesinModalSuccessOpen}
+        close={() => null}
+      />
       <View style={styles.wrapper}>
         <Text style={styles.headerTitle}>
           Sistem Informasi Absensi{'\n'}Elektronik Sekolah
